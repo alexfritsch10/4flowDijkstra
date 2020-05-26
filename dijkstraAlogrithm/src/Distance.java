@@ -1,25 +1,13 @@
 import java.util.Objects;
 
-public class Distance {
+public class Distance implements Comparable<Distance> {
 
-    private int startNode;
-    private int endNode;
     private int distance;
     private int previousNode;
 
-    public Distance(int startNode, int endNode, int distance, int previousNode) {
-        this.startNode = startNode;
-        this.endNode = endNode;
+    public Distance( int distance, int previousNode) {
         this.distance = distance;
         this.previousNode = previousNode;
-    }
-
-    public int getStartNode() {
-        return startNode;
-    }
-
-    public int getEndNode() {
-        return endNode;
     }
 
     public int getDistance() {
@@ -30,14 +18,6 @@ public class Distance {
         return previousNode;
     }
 
-    public void setStartNode(int startNode) {
-        this.startNode = startNode;
-    }
-
-    public void setEndNode(int endNode) {
-        this.endNode = endNode;
-    }
-
     public void setDistance(int distance) {
         this.distance = distance;
     }
@@ -46,24 +26,22 @@ public class Distance {
         this.previousNode = previousNode;
     }
 
+    public void setDistanceAndPreviousNode (int distance, int previousNode) {
+        this.distance = distance;
+        this.previousNode = previousNode;
+    }
+
     @Override
     public String toString() {
         return "Distance {" +
-                "startNode = " + startNode +
-                ", endNode = " + endNode +
-                ", distance = " + distance +
+                " distance = " + distance +
                 ", previousNode = " + previousNode +
                 '}';
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Distance distance1 = (Distance) o;
-        return startNode == distance1.startNode &&
-                endNode == distance1.endNode &&
-                distance == distance1.distance &&
-                previousNode == distance1.previousNode;
+    public int compareTo(Distance distance) {
+        return Integer.compare(this.distance, distance.getDistance());
     }
+
 }

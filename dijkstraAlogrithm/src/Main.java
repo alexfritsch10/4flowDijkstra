@@ -15,9 +15,9 @@ public class Main {
 
         System.out.println("Calculated Route will be: " + startNode + " -> " + endNode);
 
-        ArrayList<GraphElement> weightedGraph = createGraph();
+        ArrayList<GraphElement> graph = createGraph();
 
-        System.out.println("Fastest Route: " + computeFastestRoute(weightedGraph, startNode, endNode));
+        System.out.println("Fastest Route: " + computeFastestRoute(graph, startNode, endNode));
     }
 
     public static ArrayList<GraphElement> createGraph() {
@@ -41,108 +41,91 @@ public class Main {
     }
 
     public static String computeFastestRoute(ArrayList<GraphElement> graph, int startNode, int endNode) {
-        ArrayList<Distance> distances = initializeDistances(graph, startNode);
+        HashMap<Integer, Distance> distances = initializeDistances(graph, startNode);
         int currentNode = startNode;
 
         // Nodes for which the shortest route has already been found are not considered further
         ArrayList<Integer> usedNodes = new ArrayList<>();
 
         while(currentNode != endNode) {
-            ArrayList<GraphElement> graphElementsWithStartNode = getGraphElementsWithStartNode(graph, startNode, currentNode);
-            int finalCurrentNode = currentNode;
+            ArrayList<GraphElement> graphElementsWithStartNode = getGraphElementsWithStartNode(graph, currentNode);
+            int iterationCurrentNode = currentNode;
 
             // error handling for dead end nodes
             boolean noPossibleWayFromCurrentNode = (graphElementsWithStartNode.size() == 0);
-            boolean noPossibleWayFromAnotherNode = distances.stream().noneMatch(a -> (a.getDistance() > 0) && (!usedNodes.contains(a.getEndNode())) && (a.getEndNode() != finalCurrentNode));
+            boolean noPossibleWayFromAnotherNode = distances.entrySet().stream()
+                    .noneMatch(a -> (a.getValue().getDistance() > 0) && (!usedNodes.contains(a.getKey())) && (a.getKey() != iterationCurrentNode));
 
             if(noPossibleWayFromCurrentNode && noPossibleWayFromAnotherNode) {
                 return "No possible Route found (Dead End)";
             } else if (noPossibleWayFromCurrentNode) {
                 // change current node, because there are no available paths
                 usedNodes.add(currentNode);
-                currentNode = distances.stream().filter(a -> a.getDistance() > 0 && !usedNodes.contains((a.getEndNode()))).collect(Collectors.toCollection(ArrayList::new)).get(1).getEndNode();
+                currentNode = distances.entrySet().stream()
+                        .filter(a -> a.getValue().getDistance() > 0 && !usedNodes.contains((a.getKey())))
+                        .collect(Collectors.toCollection(ArrayList::new))
+                        .get(1)
+                        .getKey();
                 continue;
             }
 
             //iterate through all available paths from current node
-            for (int i = 0; i < graphElementsWithStartNode.size(); i++) {
-                int finalI = i;
-                Optional<Distance> actualDistanceFromEndNodeToStartNode = distances.stream().filter(a -> a.getEndNode() == graphElementsWithStartNode.get(finalI).getEndNode()).findFirst();
-                Optional<Distance> actualDistanceFromCurrentNodeToStartNode = distances.stream().filter(a -> a.getEndNode() == finalCurrentNode).findFirst();
-                int weightOfGraphElement = graphElementsWithStartNode.get(i).getWeight();
+            for (GraphElement graphElement : graphElementsWithStartNode) {
+                int distanceFromEndNodeToStartNode = distances.get(graphElement.getEndNode()).getDistance();
+                int distanceFromCurrentNodeToStartNode = distances.get(iterationCurrentNode).getDistance();
+                int weightOfGraphElement = graphElement.getWeight();
 
-                if(actualDistanceFromCurrentNodeToStartNode.isPresent() && actualDistanceFromEndNodeToStartNode.isPresent()) {
-                    int distanceFromCurrentNodeToStartNode = actualDistanceFromCurrentNodeToStartNode.get().getDistance();
-                    int distanceFromEndNodeToStartNode = actualDistanceFromEndNodeToStartNode.get().getDistance();
-
-
-                    // check whether the distance entries can be optimized
-                    if (distanceFromEndNodeToStartNode > (distanceFromCurrentNodeToStartNode + weightOfGraphElement) || distanceFromEndNodeToStartNode == 0) {
-                        Optional<Distance> mutateDistance = distances.stream().filter(a -> a.getEndNode() == graphElementsWithStartNode.get(finalI).getEndNode()).findFirst();
-
-                        // update the distance from the respective node to the start node
-                        if (mutateDistance.isPresent()) {
-                            Distance extractedDistance = distances.remove(distances.indexOf(mutateDistance.get()));
-                            extractedDistance.setDistance(distanceFromCurrentNodeToStartNode + weightOfGraphElement);
-                            extractedDistance.setPreviousNode(currentNode);
-                            distances.add(extractedDistance);
-                        }
-                    }
+                // check whether the distance entries can be optimized
+                if (distanceFromEndNodeToStartNode > (distanceFromCurrentNodeToStartNode + weightOfGraphElement) || distanceFromEndNodeToStartNode == 0) {
+                    //update the distance and the previous node
+                    distances.get(graphElement.getEndNode()).setDistanceAndPreviousNode((distanceFromCurrentNodeToStartNode + weightOfGraphElement), currentNode);
                 }
             }
 
             usedNodes.add(currentNode);
 
             // set new current node
-            Optional<Distance> newCurrent = distances.stream().filter(a -> a.getDistance() > 0 && !usedNodes.contains(a.getEndNode())).min(Comparator.comparingInt(Distance::getDistance));
+            Optional <Map.Entry<Integer, Distance>> newCurrentNode = distances.entrySet().stream()
+                    .filter(a -> a.getValue().getDistance() > 0 && !usedNodes.contains(a.getKey()))
+                    .min(Map.Entry.comparingByValue(Distance::compareTo));
 
-            if(newCurrent.isPresent()) {
-                currentNode = newCurrent.get().getEndNode();
+            if(newCurrentNode.isPresent()) {
+                currentNode = newCurrentNode.get().getKey();
             }
         }
 
         return constructShortestRoute(distances, startNode, endNode);
     }
 
-    public static ArrayList<Distance> initializeDistances(ArrayList<GraphElement> graph, int startNode) {
-        ArrayList<Distance> distances = new ArrayList<>();
-        graph.stream().map(GraphElement::getEndNode).distinct().forEach(a -> distances.add(new Distance(startNode, a, 0, 0)));
-        distances.add(new Distance(startNode, startNode, 0, 0));
+    public static HashMap<Integer, Distance> initializeDistances(ArrayList<GraphElement> graph, int startNode) {
+        HashMap<Integer, Distance> distances = new HashMap<>();
+        graph.stream().map(GraphElement::getEndNode).distinct().forEach(a -> distances.put(a, new Distance(0, 0)));
+        distances.put(startNode, new Distance(0, 0));
 
         return distances;
     }
 
-    public static ArrayList<GraphElement> getGraphElementsWithStartNode(ArrayList<GraphElement> graph, int startNode, int currentNode) {
-        return graph.stream().filter(a -> a.getStartNode() == currentNode && a.getEndNode() != startNode).collect(Collectors.toCollection(ArrayList::new));
+    public static ArrayList<GraphElement> getGraphElementsWithStartNode(ArrayList<GraphElement> graph, int currentNode) {
+        return graph.stream()
+                .filter(a -> a.getStartNode() == currentNode)
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
-    public static String constructShortestRoute(ArrayList<Distance> distances, int startNode, int endNode) {
+    public static String constructShortestRoute(HashMap<Integer, Distance> distances, int startNode, int endNode) {
+        if(distances.get(endNode).getDistance() == 0) return "No possible Route found";
+
         ArrayList<Integer> usedNodes = new ArrayList<>();
-        boolean nodeIsStartNode = false;
         int currentEndNode = endNode;
-        int totalLength = 0;
 
         while(currentEndNode != startNode) {
-            int finalCurrentEndNode = currentEndNode;
             usedNodes.add(currentEndNode);
-            Optional<Distance> distanceFromEndNodeToStartNode = distances.stream().filter(a -> a.getEndNode() == finalCurrentEndNode).findFirst();
-
-            if(distanceFromEndNodeToStartNode.isEmpty() || distanceFromEndNodeToStartNode.get().getDistance() == 0) {
-                return "No possible Route found";
-            }
-
-            if(currentEndNode == endNode) {
-                totalLength = distanceFromEndNodeToStartNode.get().getDistance();
-
-            }
-
-            currentEndNode = distanceFromEndNodeToStartNode.get().getPreviousNode();
-
+            Distance distanceFromEndNodeToStartNode = distances.get(currentEndNode);
+            currentEndNode = distanceFromEndNodeToStartNode.getPreviousNode();
         }
 
         usedNodes.add(currentEndNode);
 
-        return reverseList(usedNodes).toString() + " (Length: " + totalLength + ")";
+        return reverseList(usedNodes).toString() + " (Length: " + distances.get(endNode).getDistance() + ")";
     }
 
     public static ArrayList<Integer> reverseList(ArrayList<Integer> originalList) {
@@ -154,5 +137,4 @@ public class Main {
 
         return originalList;
     }
-
 }
