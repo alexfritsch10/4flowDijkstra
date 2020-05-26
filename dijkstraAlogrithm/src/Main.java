@@ -54,7 +54,7 @@ public class Main {
             // error handling for dead end nodes
             boolean noPossibleWayFromCurrentNode = (graphElementsWithStartNode.size() == 0);
             boolean noPossibleWayFromAnotherNode = distances.entrySet().stream()
-                    .noneMatch(a -> (a.getValue().getDistance() > 0) && (!usedNodes.contains(a.getKey())) && (a.getKey() != iterationCurrentNode));
+                    .noneMatch(dist -> (dist.getValue().getDistance() > 0) && (!usedNodes.contains(dist.getKey())) && (dist.getKey() != iterationCurrentNode));
 
             if(noPossibleWayFromCurrentNode && noPossibleWayFromAnotherNode) {
                 return "No possible Route found (Dead End)";
@@ -62,7 +62,7 @@ public class Main {
                 // change current node, because there are no available paths
                 usedNodes.add(currentNode);
                 currentNode = distances.entrySet().stream()
-                        .filter(a -> a.getValue().getDistance() > 0 && !usedNodes.contains((a.getKey())))
+                        .filter(dist -> dist.getValue().getDistance() > 0 && !usedNodes.contains((dist.getKey())))
                         .collect(Collectors.toCollection(ArrayList::new))
                         .get(1)
                         .getKey();
@@ -86,7 +86,7 @@ public class Main {
 
             // set new current node
             Optional <Map.Entry<Integer, Distance>> newCurrentNode = distances.entrySet().stream()
-                    .filter(a -> a.getValue().getDistance() > 0 && !usedNodes.contains(a.getKey()))
+                    .filter(dist -> dist.getValue().getDistance() > 0 && !usedNodes.contains(dist.getKey()))
                     .min(Map.Entry.comparingByValue(Distance::compareTo));
 
             if(newCurrentNode.isPresent()) {
@@ -99,7 +99,7 @@ public class Main {
 
     public static HashMap<Integer, Distance> initializeDistances(ArrayList<GraphElement> graph, int startNode) {
         HashMap<Integer, Distance> distances = new HashMap<>();
-        graph.stream().map(GraphElement::getEndNode).distinct().forEach(a -> distances.put(a, new Distance(0, 0)));
+        graph.stream().map(GraphElement::getEndNode).distinct().forEach(endNode -> distances.put(endNode, new Distance(0, 0)));
         distances.put(startNode, new Distance(0, 0));
 
         return distances;
@@ -107,7 +107,7 @@ public class Main {
 
     public static ArrayList<GraphElement> getGraphElementsWithStartNode(ArrayList<GraphElement> graph, int currentNode) {
         return graph.stream()
-                .filter(a -> a.getStartNode() == currentNode)
+                .filter(grEl -> grEl.getStartNode() == currentNode)
                 .collect(Collectors.toCollection(ArrayList::new));
     }
 
